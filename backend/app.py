@@ -93,7 +93,7 @@ async def upload_screenshots(files: List[UploadFile] = File(...)):
         uploaded_files.append({
             "id": file_id,
             "filename": file.filename,
-            "path": str(file_path),
+            "path": f"{file_id}{file_extension}",  # Just the filename, relative resolution will handle it
             "size": file_path.stat().st_size
         })
 
@@ -522,9 +522,14 @@ async def edit_preview_new(request: EditPreviewRequest):
         output_path = OUTPUT_DIR / f"{preview_id}.png"
 
         # Parse screenshot path to get the actual file
-        project_root = Path(__file__).parent.parent
         screenshot_file = Path(request.screenshot_path)
-        if not screenshot_file.is_absolute():
+
+        # If it's just a filename, look in UPLOAD_DIR
+        if not screenshot_file.is_absolute() and screenshot_file.parent == Path('.'):
+            screenshot_file = UPLOAD_DIR / screenshot_file.name
+        # If it's a relative path with directories, resolve from project root
+        elif not screenshot_file.is_absolute():
+            project_root = Path(__file__).parent.parent
             screenshot_file = project_root / request.screenshot_path
 
         if not screenshot_file.exists():
@@ -887,9 +892,10 @@ def get_output_size(size_preset: str) -> tuple:
 class SaveProjectRequest(BaseModel):
     project_id: Optional[str]
     name: str
-    template_id: int
+    template_id: Optional[int]
     screenshots: list
     settings: dict
+    screenshot_edits: Optional[dict] = None
 
 
 @app.post("/api/save-project")
@@ -910,6 +916,7 @@ async def save_project(request: SaveProjectRequest):
             "template_id": request.template_id,
             "screenshots": request.screenshots,
             "settings": request.settings,
+            "screenshot_edits": request.screenshot_edits or {},
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat()
         }
