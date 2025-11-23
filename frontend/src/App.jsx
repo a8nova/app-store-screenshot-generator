@@ -143,6 +143,7 @@ function App() {
   const [activeEditorSection, setActiveEditorSection] = useState('devices');
   const [generatingEditedPreview, setGeneratingEditedPreview] = useState(false);
   const [savingProject, setSavingProject] = useState(false);
+  const [viewingGeneratedPreviews, setViewingGeneratedPreviews] = useState(false);
 
   // Create refs for each template section
   const templateRefs = useRef({});
@@ -233,8 +234,53 @@ function App() {
         file: files[index],
         textOverlay: null,
       }));
-      addScreenshots(filesWithPreviews);
-      setActiveTab('captions');
+
+      // Automatically load into editor after upload
+      const screenshotsForEditor = filesWithPreviews.map((screenshot, idx) => ({
+        screenshot_path: screenshot.path,
+        preview_id: screenshot.id,
+        caption: `Screenshot ${idx + 1}`,
+        preview: screenshot.preview
+      }));
+
+      setEditingScreenshots(screenshotsForEditor);
+      setCurrentScreenshotIndex(0);
+      setScreenshotEdits({});
+      setDirtyScreenshots(new Set());
+      setProjectName(`Project ${new Date().toLocaleDateString()}`);
+
+      // Set initial template settings
+      setEditingTemplate({
+        name: 'Custom Upload',
+        settings: {
+          deviceFrame: 'iphone-15-pro',
+          textPosition: 'top',
+          backgroundType: 'gradient',
+          backgroundConfig: {
+            colors: ['#667eea', '#764ba2']
+          },
+          positioning: {
+            rotation: 0
+          }
+        },
+        backendTemplateId: null
+      });
+
+      setEditorSettings({
+        device: 'iphone-15-pro',
+        text: screenshotsForEditor[0]?.caption || '',
+        textPosition: 'top',
+        textColor: 'white',
+        backgroundType: 'gradient',
+        gradientColors: ['#667eea', '#764ba2'],
+        solidColor: '#ffffff',
+        backgroundImage: null,
+        backgroundImageId: null,
+        rotation: 0
+      });
+
+      // Switch directly to editor
+      setActiveTab('editor');
     } catch (error) {
       alert('Upload failed');
     } finally {
@@ -541,7 +587,10 @@ function App() {
       let failCount = 0;
       results.forEach(result => {
         if (result.success) {
-          updatedScreenshots[result.idx] = result.data;
+          updatedScreenshots[result.idx] = {
+            ...result.data,
+            preview: null  // Clear blob URL so it uses preview_id instead
+          };
           successCount++;
         } else {
           failCount++;
@@ -640,7 +689,10 @@ function App() {
       let failCount = 0;
       results.forEach(result => {
         if (result.success) {
-          updatedScreenshots[result.idx] = result.data;
+          updatedScreenshots[result.idx] = {
+            ...result.data,
+            preview: null  // Clear blob URL so it uses preview_id instead
+          };
           successCount++;
         } else {
           failCount++;
@@ -650,7 +702,9 @@ function App() {
       setEditingScreenshots(updatedScreenshots);
       setDirtyScreenshots(new Set()); // Clear dirty state after successful generation
       console.log(`📊 Generation results: ${successCount} succeeded, ${failCount} failed`);
-      alert(`Generation complete! Success: ${successCount}, Failed: ${failCount}`);
+
+      // Show preview modal
+      setViewingGeneratedPreviews(true);
     } catch (error) {
       console.error('❌ Generation error:', error);
       alert('Failed to generate previews: ' + error.message);
@@ -1158,7 +1212,37 @@ function App() {
                     <h3 className="text-lg font-bold mb-4">Text Overlay</h3>
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium mb-2">Caption Text</label>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-sm font-medium">Caption Text</label>
+                          <button
+                            onClick={async () => {
+                              const currentScreenshot = editingScreenshots[currentScreenshotIndex];
+                              if (!currentScreenshot || !currentScreenshot.screenshot_path) return;
+
+                              setGeneratingCaptions(prev => ({ ...prev, [currentScreenshot.preview_id]: true }));
+                              try {
+                                const result = await api.generateCaption(currentScreenshot.preview_id);
+                                const newSettings = { ...editorSettings, text: result.caption };
+                                setEditorSettings(newSettings);
+                                setScreenshotEdits(prev => ({
+                                  ...prev,
+                                  [currentScreenshotIndex]: newSettings
+                                }));
+                                setDirtyScreenshots(prev => new Set(prev).add(currentScreenshotIndex));
+                              } catch (error) {
+                                console.error('Failed to generate caption:', error);
+                                alert('Failed to generate caption. Please try again.');
+                              } finally {
+                                setGeneratingCaptions(prev => ({ ...prev, [currentScreenshot.preview_id]: false }));
+                              }
+                            }}
+                            disabled={generatingCaptions[editingScreenshots[currentScreenshotIndex]?.preview_id]}
+                            className="px-3 py-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            {generatingCaptions[editingScreenshots[currentScreenshotIndex]?.preview_id] ? 'Generating...' : 'Generate'}
+                          </button>
+                        </div>
                         <textarea
                           value={editorSettings.text}
                           onChange={(e) => {
@@ -1501,7 +1585,7 @@ function App() {
                             className="relative aspect-[9/19.5] mb-3 rounded-xl overflow-hidden hover:scale-105 transition-transform"
                           >
                             <img
-                              src={api.getDownloadUrl(screenshot.preview_id)}
+                              src={screenshot.preview || api.getDownloadUrl(screenshot.preview_id)}
                               alt={screenshot.caption}
                               className="w-full h-full object-cover"
                             />
@@ -1541,6 +1625,62 @@ function App() {
                           </p>
                         </div>
                       </label>
+
+                      {/* Generate All Captions Button */}
+                      <button
+                        onClick={async () => {
+                          setGeneratingAllCaptions(true);
+                          try {
+                            const captionPromises = editingScreenshots.map(async (screenshot, idx) => {
+                              try {
+                                const result = await api.generateCaption(screenshot.preview_id);
+                                return { idx, caption: result.caption };
+                              } catch (error) {
+                                console.error(`Failed to generate caption for screenshot ${idx}:`, error);
+                                return { idx, caption: null };
+                              }
+                            });
+
+                            const results = await Promise.all(captionPromises);
+
+                            // Update all captions
+                            const newEdits = { ...screenshotEdits };
+                            const newDirty = new Set(dirtyScreenshots);
+
+                            results.forEach(({ idx, caption }) => {
+                              if (caption) {
+                                const currentSettings = newEdits[idx] || editorSettings;
+                                newEdits[idx] = { ...currentSettings, text: caption };
+                                newDirty.add(idx);
+                              }
+                            });
+
+                            setScreenshotEdits(newEdits);
+                            setDirtyScreenshots(newDirty);
+
+                            // Update current editor settings if we're viewing one of them
+                            if (results[currentScreenshotIndex]?.caption) {
+                              setEditorSettings(prev => ({
+                                ...prev,
+                                text: results[currentScreenshotIndex].caption
+                              }));
+                            }
+
+                            const successCount = results.filter(r => r.caption !== null).length;
+                            alert(`Generated ${successCount} out of ${editingScreenshots.length} captions!`);
+                          } catch (error) {
+                            console.error('Failed to generate all captions:', error);
+                            alert('Failed to generate captions. Please try again.');
+                          } finally {
+                            setGeneratingAllCaptions(false);
+                          }
+                        }}
+                        disabled={generatingAllCaptions}
+                        className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 shadow-lg"
+                      >
+                        <Sparkles className="w-6 h-6" />
+                        {generatingAllCaptions ? 'Generating All Captions...' : 'Generate All Captions with AI'}
+                      </button>
 
                       {/* Regenerate Edited Button */}
                       {dirtyScreenshots.size > 0 && (
@@ -1614,7 +1754,7 @@ function App() {
                                 {project.screenshots.slice(0, 3).map((screenshot, idx) => (
                                   <div key={idx} className="w-16 flex-shrink-0">
                                     <img
-                                      src={api.getDownloadUrl(screenshot.preview_id)}
+                                      src={screenshot.preview || api.getDownloadUrl(screenshot.preview_id)}
                                       alt={`Screenshot ${idx + 1}`}
                                       className="w-full rounded-lg shadow-lg"
                                     />
@@ -1707,38 +1847,112 @@ function App() {
 
           {/* Upload & Generate Tab */}
           {activeTab === 'upload' && (
-            <div className="space-y-6">
+            <div className="flex items-center justify-center min-h-[60vh]">
               {/* Upload Section */}
-              <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-6">
-              <h2 className="text-xl font-bold mb-4">Upload Screenshots</h2>
-              <label className="block cursor-pointer">
-                <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-xl font-semibold text-center transition-all transform hover:scale-105">
-                  {uploading ? 'Uploading...' : 'Choose Screenshots'}
+              <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-12 max-w-2xl w-full text-center">
+                <div className="mb-6">
+                  <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <UploadIcon className="w-10 h-10" />
+                  </div>
+                  <h2 className="text-3xl font-bold mb-2">Upload Your Screenshots</h2>
+                  <p className="text-gray-400">Upload your app screenshots and we'll take you to the editor to create beautiful previews</p>
                 </div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={handleFileUpload}
-                  disabled={uploading}
-                />
-              </label>
+                <label className="block cursor-pointer">
+                  <div className="px-8 py-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-xl font-bold text-lg text-center transition-all transform hover:scale-105 shadow-lg">
+                    {uploading ? (
+                      <div className="flex items-center justify-center gap-3">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                        Uploading...
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center gap-3">
+                        <ImageIcon className="w-6 h-6" />
+                        Choose Screenshots to Upload
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleFileUpload}
+                    disabled={uploading}
+                  />
+                </label>
+                <p className="text-sm text-gray-500 mt-4">Supports PNG, JPG, JPEG • Multiple files allowed</p>
+              </div>
             </div>
+          )}
 
-            {/* Screenshots with Captions */}
-            {screenshots.length > 0 && (
+            {/* Old screenshots section - no longer needed */}
+            {false && screenshots.length > 0 && (
               <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold">Screenshots & Captions</h2>
-                  <button
-                    onClick={handleGenerateAllCaptions}
-                    disabled={generatingAllCaptions}
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    {generatingAllCaptions ? 'Generating All...' : 'Generate All Captions'}
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleGenerateAllCaptions}
+                      disabled={generatingAllCaptions}
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      {generatingAllCaptions ? 'Generating All...' : 'Generate All Captions'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        // Load screenshots into editor mode
+                        const screenshotsForEditor = screenshots.map((screenshot, idx) => ({
+                          screenshot_path: screenshot.path,
+                          preview_id: screenshot.id,
+                          caption: screenshot.textOverlay?.text || `Screenshot ${idx + 1}`,
+                          preview: screenshot.preview
+                        }));
+
+                        setEditingScreenshots(screenshotsForEditor);
+                        setCurrentScreenshotIndex(0);
+                        setScreenshotEdits({});
+                        setDirtyScreenshots(new Set());
+                        setProjectName('My Project');
+
+                        // Set initial template settings
+                        setEditingTemplate({
+                          name: 'Custom Upload',
+                          settings: {
+                            deviceFrame: 'iphone-15-pro',
+                            textPosition: 'top',
+                            backgroundType: 'gradient',
+                            backgroundConfig: {
+                              colors: ['#667eea', '#764ba2']
+                            },
+                            positioning: {
+                              rotation: 0
+                            }
+                          },
+                          backendTemplateId: null
+                        });
+
+                        setEditorSettings({
+                          device: 'iphone-15-pro',
+                          text: screenshotsForEditor[0]?.caption || '',
+                          textPosition: 'top',
+                          textColor: 'white',
+                          backgroundType: 'gradient',
+                          gradientColors: ['#667eea', '#764ba2'],
+                          solidColor: '#ffffff',
+                          backgroundImage: null,
+                          backgroundImageId: null,
+                          rotation: 0
+                        });
+
+                        setActiveTab('editor');
+                      }}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                      Edit & Generate Previews
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-4">
                   {screenshots.map((screenshot, index) => (
@@ -1841,8 +2055,6 @@ function App() {
                 </div>
               </div>
             )}
-            </div>
-          )}
         </div>
       </main>
 
@@ -1924,6 +2136,62 @@ function App() {
             </div>
           </div>
         )}
+
+      {/* Generated Previews Modal */}
+      {viewingGeneratedPreviews && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 rounded-2xl border border-white/20 p-6 max-w-7xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold">Generated Previews</h2>
+                <p className="text-gray-400 text-sm mt-1">Your app store preview screenshots are ready!</p>
+              </div>
+              <button
+                onClick={() => setViewingGeneratedPreviews(false)}
+                className="p-2 hover:bg-white/10 rounded-lg transition-all"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {editingScreenshots.map((screenshot, idx) => (
+                <div key={idx} className="bg-white/5 rounded-xl p-4 hover:bg-white/10 transition-all">
+                  <div className="aspect-[9/19.5] mb-3 rounded-lg overflow-hidden bg-black/20">
+                    <img
+                      src={screenshot.preview || api.getDownloadUrl(screenshot.preview_id)}
+                      alt={screenshot.caption}
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <p className="text-sm text-center text-gray-300 font-semibold mb-2">
+                    {screenshot.caption}
+                  </p>
+                  <a
+                    href={api.getDownloadUrl(screenshot.preview_id)}
+                    download={`preview_${idx + 1}.png`}
+                    className="block w-full py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-xs font-semibold text-center transition-all"
+                  >
+                    Download
+                  </a>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 flex justify-between items-center">
+              <p className="text-sm text-gray-400">
+                {editingScreenshots.length} screenshot{editingScreenshots.length > 1 ? 's' : ''} generated
+              </p>
+              <button
+                onClick={() => setViewingGeneratedPreviews(false)}
+                className="px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-xl font-semibold transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

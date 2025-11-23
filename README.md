@@ -1,4 +1,4 @@
-# App Store Preview Generator 🎨
+# App Store Preview Generator
 
 An elegant web application for generating stunning app store preview images powered by FLUX from fal.ai.
 
