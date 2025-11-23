@@ -1,0 +1,15 @@
+# Web Framework
+fastapi
+uvicorn[standard]
+
+# File Upload Support
+python-multipart
+
+# HTTP requests for downloading FLUX results
+requests
+
+# fal.ai Integration
+fal-client
+
+# Environment Variables
+python-dotenv

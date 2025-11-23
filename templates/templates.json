@@ -1,0 +1,95 @@
+{
+  "templates": [
+    {
+      "id": 1,
+      "name": "Fitness App",
+      "theme": "Purple Gradient",
+      "captions": [
+        "The app for FITNESS!",
+        "1M+ happy USERS!",
+        "Reduce stress with simple CHARTS!",
+        "Your new program is WAITING!",
+        "Track progress in REAL-TIME!"
+      ],
+      "settings": {
+        "device_frame": "iphone-15-pro",
+        "background_type": "gradient",
+        "background_config": {
+          "colors": ["#667eea", "#764ba2"]
+        },
+        "positioning": {
+          "scale": 0.85,
+          "rotation": 0,
+          "x_offset": 0,
+          "y_offset": 0,
+          "shadow": true,
+          "reflection": false
+        }
+      },
+      "ui_descriptions": [
+        "fitness tracking app interface with workout stats, exercise cards, progress charts, profile avatar, navigation buttons, detailed UI elements",
+        "social media app with user reviews, 5-star ratings, profile pictures, comment threads, like buttons, timestamp labels, detailed interface",
+        "productivity app showing task lists, calendar view, stress management charts, habit tracker, colorful data visualization, clean interface",
+        "messaging app interface with chat bubbles, profile photos, video call buttons, notification badges, status indicators, modern UI",
+        "dashboard app with analytics graphs, progress bars, achievement badges, user statistics, colorful cards, professional layout"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Weather App",
+      "theme": "Blue Sky Gradient",
+      "source_screenshots": "templates/weatherapp/",
+      "captions": [
+        "Weather that's always ACCURATE!",
+        "Track conditions across CITIES!",
+        "Customize settings your WAY!",
+        "See precipitation in REAL-TIME!",
+        "Detailed forecasts at a GLANCE!"
+      ],
+      "settings": {
+        "device_frame": "iphone-15-pro",
+        "background_type": "gradient",
+        "background_config": {
+          "colors": ["#4A90E2", "#50C9E8"]
+        },
+        "positioning": {
+          "scale": 0.85,
+          "rotation": -2,
+          "x_offset": 0,
+          "y_offset": 0,
+          "shadow": true,
+          "reflection": false
+        }
+      },
+      "ui_descriptions": [
+        "weather app main screen with large temperature display, location name, current conditions, hourly forecast timeline, 10-day forecast cards, weather icons, clean iOS design",
+        "weather app city list view with multiple locations, temperature displays for each city, weather condition cards, time stamps, search bar, elegant card layout",
+        "weather app settings overlay with menu options, toggle switches for Celsius/Fahrenheit, notification settings, edit list button, modern iOS menu design",
+        "weather app precipitation map view showing radar with blue precipitation overlay, map pins for saved locations, temperature indicators, layer controls, interactive map interface",
+        "weather app detailed conditions screen with temperature graph, hourly breakdown, precipitation percentage chart, actual vs feels like tabs, weather data visualization"
+      ],
+      "screenshot_details": [
+        {
+          "file": "IMG_5497-min.PNG",
+          "description": "Main weather view - Financial District, 52°, Cloudy, H:57° L:52°, hourly forecast, 10-day forecast"
+        },
+        {
+          "file": "IMG_5498-min.PNG",
+          "description": "City list - Multiple cities with temperatures (Singapore 80°, Castro Valley 47°, San Francisco 51°, Long Beach 51°, Tula 33°)"
+        },
+        {
+          "file": "IMG_5499-min.PNG",
+          "description": "Settings menu - Edit List, Notifications, Celsius/Fahrenheit toggle, Units, Report an Issue"
+        },
+        {
+          "file": "IMG_5500-min.PNG",
+          "description": "Precipitation map - US West Coast with blue precipitation overlay, location pins"
+        },
+        {
+          "file": "IMG_5501.PNG",
+          "description": "Detailed conditions - Temperature graph, precipitation chart, November 23 2025, hourly breakdown"
+        }
+      ]
+    }
+  ]
+}
