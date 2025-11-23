@@ -129,6 +129,7 @@ function App() {
     device: 'iphone-15-pro',
     text: '',
     textPosition: 'top',
+    textColor: 'white',
     backgroundType: 'gradient',
     gradientColors: ['#667eea', '#764ba2'],
     solidColor: '#ffffff',
@@ -485,6 +486,7 @@ function App() {
         const settings = {
           caption: edit.text || screenshot.caption,
           text_position: edit.textPosition || editingTemplate.settings.textPosition || 'top',
+          text_color: edit.textColor || 'white',
           device_frame: edit.device || editingTemplate.settings.deviceFrame,
           background_type: backgroundType,
           background_config: backgroundType === 'gradient'
@@ -583,6 +585,7 @@ function App() {
         const settings = {
           caption: edit.text || screenshot.caption,
           text_position: edit.textPosition || editingTemplate.settings.textPosition || 'top',
+          text_color: edit.textColor || 'white',
           device_frame: edit.device || editingTemplate.settings.deviceFrame,
           background_type: backgroundType,
           background_config: backgroundType === 'gradient'
@@ -681,6 +684,7 @@ function App() {
             device: edit.device || editingTemplate.settings.deviceFrame,
             text: edit.text || screenshot.caption,
             textPosition: edit.textPosition || editingTemplate.settings.textPosition || 'top',
+            textColor: edit.textColor || 'white',
             backgroundType: edit.backgroundType || editingTemplate.settings.backgroundType,
             gradientColors: edit.gradientColors || editingTemplate.settings.backgroundConfig.colors || ['#667eea', '#764ba2'],
             solidColor: edit.solidColor || editingTemplate.settings.backgroundConfig.color || '#ffffff',
@@ -1190,6 +1194,49 @@ function App() {
                           <option value="center">Center</option>
                           <option value="bottom">Bottom</option>
                         </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Text Color</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            onClick={() => {
+                              const newSettings = { ...editorSettings, textColor: 'white' };
+                              setEditorSettings(newSettings);
+                              setScreenshotEdits(prev => ({
+                                ...prev,
+                                [currentScreenshotIndex]: newSettings
+                              }));
+                              setDirtyScreenshots(prev => new Set(prev).add(currentScreenshotIndex));
+                            }}
+                            className={`px-4 py-3 rounded-lg transition-all flex items-center justify-center gap-2 ${
+                              editorSettings.textColor === 'white'
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-white/5 hover:bg-white/10'
+                            }`}
+                          >
+                            <div className="w-4 h-4 bg-white rounded-full border border-gray-400"></div>
+                            White
+                          </button>
+                          <button
+                            onClick={() => {
+                              const newSettings = { ...editorSettings, textColor: 'black' };
+                              setEditorSettings(newSettings);
+                              setScreenshotEdits(prev => ({
+                                ...prev,
+                                [currentScreenshotIndex]: newSettings
+                              }));
+                              setDirtyScreenshots(prev => new Set(prev).add(currentScreenshotIndex));
+                            }}
+                            className={`px-4 py-3 rounded-lg transition-all flex items-center justify-center gap-2 ${
+                              editorSettings.textColor === 'black'
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-white/5 hover:bg-white/10'
+                            }`}
+                          >
+                            <div className="w-4 h-4 bg-black rounded-full border border-gray-600"></div>
+                            Black
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>

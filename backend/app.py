@@ -408,6 +408,7 @@ class EditPreviewRequest(BaseModel):
     screenshot_path: str
     caption: str
     text_position: str
+    text_color: Optional[str] = "white"
     device_frame: str
     background_type: str
     background_config: dict
@@ -441,7 +442,7 @@ def generate_preview_sync(request: EditPreviewRequest, preview_id: str, output_p
                 # Use explicit image indexing: image 1 = background, image 2 = screenshot
                 image_urls = [bg_image_url, image_url]
                 print(f"📤 Uploaded background image: {bg_file.name}")
-                text_color = "white"  # Default for custom backgrounds
+                text_color = request.text_color or "white"
                 # Use explicit image indexing as per FLUX capabilities
                 prompt = f"Use image 1 as the background. Place the app screenshot from image 2 in a realistic {request.device_frame} mockup with device frame, centered on the background, slightly tilted {rotation} degrees, with elegant drop shadow. Add large bold {text_color} text overlay at the {request.text_position} reading \"{request.caption}\" with subtle shadow for depth. Professional app store marketing aesthetic, clean composition."
             else:
@@ -452,11 +453,14 @@ def generate_preview_sync(request: EditPreviewRequest, preview_id: str, output_p
         if request.background_type != "image":
             colors = request.background_config.get("colors", ["#667eea", "#764ba2"])
 
-            # Determine text color based on background
-            if colors[0] in ["#FFFACD", "#FFFFFF"] or colors[1] in ["#FFFACD", "#FFFFFF"]:
-                text_color = "black"
-            else:
-                text_color = "white"
+            # Use text color from request, with fallback logic for backwards compatibility
+            text_color = request.text_color
+            if not text_color:
+                # Auto-determine text color based on background (legacy behavior)
+                if colors[0] in ["#FFFACD", "#FFFFFF"] or colors[1] in ["#FFFACD", "#FFFFFF"]:
+                    text_color = "black"
+                else:
+                    text_color = "white"
 
             # Use text position from request
             text_position_str = "at the bottom" if request.text_position == "bottom" else "at the top"
