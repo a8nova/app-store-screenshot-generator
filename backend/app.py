@@ -200,7 +200,7 @@ async def edit_preview(preview_id: str, text_overlay: Dict[str, Any]):
 
         # Call FLUX edit-image API
         result = fal_client.subscribe(
-            "fal-ai/alpha-image-232/edit-image",
+            "fal-ai/flux-2/edit",
             arguments={
                 "prompt": prompt,
                 "image_urls": [image_url],
@@ -352,7 +352,7 @@ async def generate_template_preview(request: TemplatePreviewRequest):
 
                 # Use alpha-image-232/edit-image to composite screenshot
                 result = fal_client.subscribe(
-                    "fal-ai/alpha-image-232/edit-image",
+                    "fal-ai/flux-2/edit",
                     arguments={
                         "prompt": prompt,
                         "image_urls": [image_url],
@@ -477,7 +477,7 @@ def generate_preview_sync(request: EditPreviewRequest, preview_id: str, output_p
         # Use alpha-image-232/edit-image to composite screenshot
         # image_urls now contains either [screenshot] or [background, screenshot]
         result = fal_client.subscribe(
-            "fal-ai/alpha-image-232/edit-image",
+            "fal-ai/flux-2/edit",
             arguments={
                 "prompt": prompt,
                 "image_urls": image_urls,
@@ -724,7 +724,7 @@ def process_screenshot_sync(job_id: str, idx: int, screenshot, request: Generati
 
         # Call FLUX edit-image API with proper URL and seed
         result = fal_client.subscribe(
-            "fal-ai/alpha-image-232/edit-image",
+            "fal-ai/flux-2/edit",
             arguments={
                 "prompt": prompt,
                 "image_urls": [image_url],  # Expects a list!
