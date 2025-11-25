@@ -4,7 +4,8 @@ An elegant web application for generating stunning app store preview images powe
 
 ## Demo
 
-[Watch the demo video](https://www.loom.com/share/1489a0b94ef74f0bb6d54621cdcd9c23)
+https://github.com/user-attachments/assets/69723820-b311-4a9a-a9e9-828341d1d3e0
+
 
 ## Features
 
