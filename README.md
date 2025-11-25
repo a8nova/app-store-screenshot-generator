@@ -2,6 +2,10 @@
 
 An elegant web application for generating stunning app store preview images powered by FLUX from fal.ai.
 
+## Demo
+
+[![Watch the demo](https://cdn.loom.com/sessions/thumbnails/1489a0b94ef74f0bb6d54621cdcd9c23-with-play.gif)](https://www.loom.com/share/1489a0b94ef74f0bb6d54621cdcd9c23)
+
 ## Features
 
 

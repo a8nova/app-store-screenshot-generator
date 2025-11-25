@@ -144,6 +144,7 @@ function App() {
   const [generatingEditedPreview, setGeneratingEditedPreview] = useState(false);
   const [savingProject, setSavingProject] = useState(false);
   const [viewingGeneratedPreviews, setViewingGeneratedPreviews] = useState(false);
+  const [viewingProjectPreview, setViewingProjectPreview] = useState(null);
 
   // Create refs for each template section
   const templateRefs = useRef({});
@@ -600,7 +601,9 @@ function App() {
       setEditingScreenshots(updatedScreenshots);
       setDirtyScreenshots(new Set()); // Clear dirty state after successful generation
       console.log(`📊 Regeneration results: ${successCount} succeeded, ${failCount} failed`);
-      alert(`Regenerated ${editedIndices.length} edited screenshot(s)! Success: ${successCount}, Failed: ${failCount}`);
+
+      // Show preview modal
+      setViewingGeneratedPreviews(true);
     } catch (error) {
       console.error('❌ Regeneration error:', error);
       alert('Failed to generate previews: ' + error.message);
@@ -1775,7 +1778,7 @@ function App() {
                           <div className="p-4">
                             <h3 className="font-bold text-lg mb-1 truncate">{project.name}</h3>
                             <p className="text-xs text-gray-400 mb-2">
-                              Based on: {template?.name || 'Unknown Template'}
+                              Based on: {template?.name || 'Custom Upload'}
                             </p>
                             <p className="text-xs text-gray-500 mb-4">
                               {project.screenshots?.length || 0} screenshots • Updated{' '}
@@ -1783,57 +1786,83 @@ function App() {
                             </p>
 
                             {/* Action Buttons */}
-                            <div className="flex gap-2">
+                            <div className="space-y-2">
                               <button
                                 onClick={() => {
-                                  // Load project into editor
-                                  setEditingTemplate(template);
-                                  setEditingScreenshots(project.screenshots || []);
-                                  setCurrentScreenshotIndex(0);
-                                  setProjectName(project.name);
-                                  setCurrentProject(project);
-
-                                  // Restore screenshot edits if available
-                                  if (project.screenshot_edits) {
-                                    setScreenshotEdits(project.screenshot_edits);
-                                  } else {
-                                    setScreenshotEdits({});
-                                  }
-
-                                  // Clear dirty state when loading a project
-                                  setDirtyScreenshots(new Set());
-
-                                  // Set editor settings from project
-                                  if (project.settings) {
-                                    setEditorSettings({
-                                      device: project.settings.device || 'iphone-15-pro',
-                                      text: project.screenshots?.[0]?.caption || '',
-                                      textPosition: template?.settings.textPosition || 'top',
-                                      backgroundType: project.settings.backgroundType || 'gradient',
-                                      gradientColors: project.settings.backgroundConfig?.colors || ['#667eea', '#764ba2'],
-                                      solidColor: project.settings.backgroundConfig?.color || '#ffffff',
-                                      backgroundImage: null,
-                                      rotation: project.settings.positioning?.rotation ?? 0
-                                    });
-                                  }
-
-                                  setActiveTab('editor');
+                                  setViewingProjectPreview(project);
                                 }}
-                                className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2"
+                                className="w-full py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2"
                               >
-                                <Edit2 className="w-4 h-4" />
-                                Edit
+                                <ImageIcon className="w-4 h-4" />
+                                View Previews
                               </button>
-                              <button
-                                onClick={() => {
-                                  // TODO: Add download all functionality
-                                  alert('Download all functionality coming soon!');
-                                }}
-                                className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2"
-                              >
-                                <Download className="w-4 h-4" />
-                                Download
-                              </button>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    // Load project into editor
+                                    // For uploaded screenshots without a template, create a custom template
+                                    const loadedTemplate = template || {
+                                      name: 'Custom Upload',
+                                      settings: {
+                                        deviceFrame: project.settings?.device || 'iphone-15-pro',
+                                        textPosition: 'top',
+                                        backgroundType: project.settings?.backgroundType || 'gradient',
+                                        backgroundConfig: project.settings?.backgroundConfig || { colors: ['#667eea', '#764ba2'] },
+                                        positioning: project.settings?.positioning || { rotation: 0 }
+                                      },
+                                      backendTemplateId: project.template_id
+                                    };
+
+                                    setEditingTemplate(loadedTemplate);
+                                    setEditingScreenshots(project.screenshots || []);
+                                    setCurrentScreenshotIndex(0);
+                                    setProjectName(project.name);
+                                    setCurrentProject(project);
+
+                                    // Restore screenshot edits if available
+                                    if (project.screenshot_edits) {
+                                      setScreenshotEdits(project.screenshot_edits);
+                                    } else {
+                                      setScreenshotEdits({});
+                                    }
+
+                                    // Clear dirty state when loading a project
+                                    setDirtyScreenshots(new Set());
+
+                                    // Set editor settings from project
+                                    if (project.settings) {
+                                      setEditorSettings({
+                                        device: project.settings.device || 'iphone-15-pro',
+                                        text: project.screenshots?.[0]?.individual_settings?.text || project.screenshots?.[0]?.caption || '',
+                                        textPosition: project.screenshots?.[0]?.individual_settings?.textPosition || 'top',
+                                        textColor: project.screenshots?.[0]?.individual_settings?.textColor || 'white',
+                                        backgroundType: project.settings.backgroundType || 'gradient',
+                                        gradientColors: project.settings.backgroundConfig?.colors || ['#667eea', '#764ba2'],
+                                        solidColor: project.settings.backgroundConfig?.color || '#ffffff',
+                                        backgroundImage: null,
+                                        backgroundImageId: null,
+                                        rotation: project.settings.positioning?.rotation ?? 0
+                                      });
+                                    }
+
+                                    setActiveTab('editor');
+                                  }}
+                                  className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    // TODO: Add download all functionality
+                                    alert('Download all functionality coming soon!');
+                                  }}
+                                  className="flex-1 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2"
+                                >
+                                  <Download className="w-4 h-4" />
+                                  Download
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -2188,6 +2217,122 @@ function App() {
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Project Preview Modal */}
+      {viewingProjectPreview && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 rounded-2xl border border-white/20 p-6 max-w-7xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold">{viewingProjectPreview.name}</h2>
+                <p className="text-gray-400 text-sm mt-1">
+                  {viewingProjectPreview.screenshots?.length || 0} screenshots •
+                  Updated {new Date(viewingProjectPreview.updated_at).toLocaleDateString()}
+                </p>
+              </div>
+              <button
+                onClick={() => setViewingProjectPreview(null)}
+                className="p-2 hover:bg-white/10 rounded-lg transition-all"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {viewingProjectPreview.screenshots?.map((screenshot, idx) => (
+                <div key={idx} className="bg-white/5 rounded-xl p-4 hover:bg-white/10 transition-all">
+                  <div className="aspect-[9/19.5] mb-3 rounded-lg overflow-hidden bg-black/20">
+                    <img
+                      src={screenshot.preview || api.getDownloadUrl(screenshot.preview_id)}
+                      alt={screenshot.caption || `Screenshot ${idx + 1}`}
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <p className="text-sm text-center text-gray-300 font-semibold mb-2">
+                    {screenshot.individual_settings?.text || screenshot.caption || `Screenshot ${idx + 1}`}
+                  </p>
+                  <a
+                    href={api.getDownloadUrl(screenshot.preview_id)}
+                    download={`${viewingProjectPreview.name}_${idx + 1}.png`}
+                    className="block w-full py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-xs font-semibold text-center transition-all"
+                  >
+                    Download
+                  </a>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 flex justify-between items-center">
+              <p className="text-sm text-gray-400">
+                {viewingProjectPreview.screenshots?.length || 0} screenshot{(viewingProjectPreview.screenshots?.length || 0) > 1 ? 's' : ''}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setViewingProjectPreview(null);
+                  }}
+                  className="px-6 py-3 bg-gray-600 hover:bg-gray-700 rounded-xl font-semibold transition-all"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => {
+                    const project = viewingProjectPreview;
+                    const template = TEMPLATES.find(t => t.backendTemplateId === project.template_id);
+                    const loadedTemplate = template || {
+                      name: 'Custom Upload',
+                      settings: {
+                        deviceFrame: project.settings?.device || 'iphone-15-pro',
+                        textPosition: 'top',
+                        backgroundType: project.settings?.backgroundType || 'gradient',
+                        backgroundConfig: project.settings?.backgroundConfig || { colors: ['#667eea', '#764ba2'] },
+                        positioning: project.settings?.positioning || { rotation: 0 }
+                      },
+                      backendTemplateId: project.template_id
+                    };
+
+                    setEditingTemplate(loadedTemplate);
+                    setEditingScreenshots(project.screenshots || []);
+                    setCurrentScreenshotIndex(0);
+                    setProjectName(project.name);
+                    setCurrentProject(project);
+
+                    if (project.screenshot_edits) {
+                      setScreenshotEdits(project.screenshot_edits);
+                    } else {
+                      setScreenshotEdits({});
+                    }
+
+                    setDirtyScreenshots(new Set());
+
+                    if (project.settings) {
+                      setEditorSettings({
+                        device: project.settings.device || 'iphone-15-pro',
+                        text: project.screenshots?.[0]?.individual_settings?.text || project.screenshots?.[0]?.caption || '',
+                        textPosition: project.screenshots?.[0]?.individual_settings?.textPosition || 'top',
+                        textColor: project.screenshots?.[0]?.individual_settings?.textColor || 'white',
+                        backgroundType: project.settings.backgroundType || 'gradient',
+                        gradientColors: project.settings.backgroundConfig?.colors || ['#667eea', '#764ba2'],
+                        solidColor: project.settings.backgroundConfig?.color || '#ffffff',
+                        backgroundImage: null,
+                        backgroundImageId: null,
+                        rotation: project.settings.positioning?.rotation ?? 0
+                      });
+                    }
+
+                    setViewingProjectPreview(null);
+                    setActiveTab('editor');
+                  }}
+                  className="px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-xl font-semibold transition-all flex items-center gap-2"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  Edit Project
+                </button>
+              </div>
             </div>
           </div>
         </div>
